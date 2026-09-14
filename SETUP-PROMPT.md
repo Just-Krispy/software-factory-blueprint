@@ -14,6 +14,9 @@ Work step by step, run every verification command, and stop to ask me for
 credentials. Never echo, log, or commit a secret. Never widen a service beyond
 127.0.0.1.
 
+Every path below (~/honcho-memory, ~/workspaces/agentic-dev, ~/shared-memory) is
+an EXAMPLE — use your own locations if you prefer, and keep them consistent.
+
 PREREQUISITES — verify, report what is missing, then continue:
   docker --version && docker compose version    # Compose v2 required
   git --version

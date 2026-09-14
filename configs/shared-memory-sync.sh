@@ -37,12 +37,16 @@ if [ -n "$(git status --porcelain)" ]; then
     SECRETS_RE='(^|/)\.env($|[._])|API_KEY=|SECRET=|PASSWORD=|PASSWD=|TOKEN=|BEGIN [A-Z ]*PRIVATE KEY|sk-or-v1-[A-Za-z0-9]{10}|sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{20}|github_pat_[A-Za-z0-9_]{20}|AKIA[0-9A-Z]{12}|xox[baprs]-[A-Za-z0-9-]{10}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'
     # `|| true`: under `set -e` a no-match grep (exit 1) would abort the script
     # before it ever commits the clean tree.
-    HITS=$(git diff --cached | grep -En "$SECRETS_RE" | head -5 || true)
-    if [ -n "$HITS" ]; then
-        echo "refusing to commit: staged content matches a secret pattern" >&2
-        printf '%s\n' "$HITS" >&2
-        echo "nothing committed; the staging area is left as-is for inspection" >&2
-        echo "remove the offending content, then re-run this script" >&2
+    HITS=$(git diff --cached | grep -Ec "$SECRETS_RE" || true)
+    if [ "${HITS:-0}" -gt 0 ]; then
+        # Report only where it matched: echoing the matching lines would copy the
+        # secret into the journal (this runs from a timer), which is the exact
+        # problem the guard exists to prevent.
+        echo "refusing to commit: $HITS staged line(s) match a secret pattern" >&2
+        echo "staged files:" >&2
+        git diff --cached --name-only | sed 's/^/  /' >&2
+        echo "inspect the diff yourself with: git diff --cached" >&2
+        echo "nothing committed; the staging area is left as-is" >&2
         exit 1
     fi
 

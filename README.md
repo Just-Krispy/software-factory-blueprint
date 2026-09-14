@@ -491,6 +491,8 @@ of truth, so any harness reads and writes it with no SDK, and every change is
 diffable and mergeable. Complements Honcho rather than replacing it: Honcho holds
 derived, queryable memory; this holds intentional, human-readable notes.
 
+Paths here are examples; keep them consistent across hosts if you change them.
+
 ```
 ~/shared-memory/
 ├── facts/           # durable, verified facts (one per file)

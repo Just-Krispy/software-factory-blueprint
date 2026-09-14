@@ -4,6 +4,8 @@ One page for the software factory. Full guide: [`README.md`](README.md).
 
 ## Components and where they live
 
+Paths are examples — substitute your own, consistently.
+
 | Layer | Path / endpoint | Verify with |
 |---|---|---|
 | Honcho API | `http://127.0.0.1:8000` | `curl -s localhost:8000/health` |
