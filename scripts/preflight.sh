@@ -40,11 +40,12 @@ req python3  python3  "--version" "install Python 3.11+ (Honcho runs 3.13 in-con
 
 # Docker daemon: the commonest first-run failure.
 if command -v docker >/dev/null 2>&1; then
-  docker_err=$(docker info 2>&1 >/dev/null | head -3)
-  if [ -z "$docker_err" ]; then
+  # Exit status decides; stderr only classifies the failure. A healthy daemon can
+  # still write warnings (e.g. 'No swap limit support' on cgroup-v1 hosts).
+  if docker info >/dev/null 2>&1; then
     printf '  ok      %-14s daemon reachable\n' "docker daemon"
     pass=$((pass+1))
-  elif printf '%s' "$docker_err" | grep -qi 'permission denied'; then
+  elif docker info 2>&1 | grep -qi 'permission denied'; then
     printf '  MISSING %-14s %s\n' "docker daemon" \
       "your user cannot talk to the socket: sudo usermod -aG docker \$USER, then re-login"
     fail=$((fail+1))

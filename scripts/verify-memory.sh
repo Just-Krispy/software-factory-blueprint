@@ -27,8 +27,7 @@ PEER="${VERIFY_PEER:-verify-peer}"
 
 CREATED_WS=0
 SESSION_OWNED=0
-WS_SOURCE="created by this script"
-SESSION_SOURCE="created by this script"
+WS_SOURCE="named by VERIFY_WORKSPACE"
 
 die_usage() { printf 'invalid %s %s: use letters, digits, dot, dash, underscore\n' "$1" "$2" >&2; exit 2; }
 valid_id() { case "$1" in ''|*[!A-Za-z0-9._-]*) return 1;; esac; return 0; }
