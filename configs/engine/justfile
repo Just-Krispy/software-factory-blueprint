@@ -1,0 +1,55 @@
+# SSSF justfile skeleton — the minimum set of entry points, not the full engine.
+#
+# Copy to the factory repo root. It assumes the ADW scripts exist under adws/
+# (see README §5.1 for what each one does). `.env` is loaded automatically, so
+# provider keys work without exporting them.
+set dotenv-load
+set positional-arguments
+
+config := env_var_or_default("SSSF_CONFIG", "adws/adw_sssf_config/sssf.config.yaml")
+db     := "adws/adw_data/sssf.db"
+
+# list every recipe
+default:
+    @just --list
+
+# ── first run: two cheap READ-ONLY runs, end to end ─────────────────────────
+demo:
+    @echo "1/2  adw_prompt: one agent, one prompt"
+    uv run adws/adw_prompt.py --config {{config}} --agent scout "reply with a one-line summary of this repo"
+    @echo "\n2/2  adw_scout: read-only recon"
+    uv run adws/adw_scout.py --config {{config}} "list the top-level directories in this repo and what each is for. change nothing."
+    @echo "\ndone. now run:  just sessions"
+
+# ── run a workflow ──────────────────────────────────────────────────────────
+# one agent, one prompt: just prompt "summarize this repo"
+prompt *ARGS:
+    uv run adws/adw_prompt.py --config {{config}} "$@"
+
+# read-only recon: just scout "where is auth handled"
+scout *ARGS:
+    uv run adws/adw_scout.py --config {{config}} "$@"
+
+# plan only: just plan "add a /health endpoint"
+plan *ARGS:
+    uv run adws/adw_plan.py --config {{config}} "$@"
+
+# plan, build, test, commit: just sdlc "add a /health endpoint"
+sdlc *ARGS:
+    uv run adws/adw_plan_build_test.py --config {{config}} "$@"
+
+# the full chain, plus review and docs: just simple-sdlc "add a /health endpoint"
+simple-sdlc *ARGS:
+    uv run adws/adw_simple_sdlc.py --config {{config}} "$@"
+
+# ── watch it (reads never block a running workflow; the db is WAL) ──────────
+sessions:
+    @sqlite3 {{db}} "select adw_id, status, substr(request,1,50), total_tokens, round(total_cost,4) from sessions order by started_at desc limit 10;"
+
+# phase status in sequence: just phases <adw_id>
+phases ADW_ID:
+    @sqlite3 {{db}} "select seq, name, kind, owner, status, attempt from phases where adw_id='{{ADW_ID}}' order by seq;"
+
+# what a run has alive right now, with pids: just procs <adw_id>
+procs ADW_ID:
+    @sqlite3 {{db}} "select kind, name, pid, command, started_at from processes where adw_id='{{ADW_ID}}' and ended_at is null order by id;"

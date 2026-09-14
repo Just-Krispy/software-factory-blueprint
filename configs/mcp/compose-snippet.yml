@@ -1,0 +1,54 @@
+# Drop-in compose service for the local Honcho MCP worker.
+#
+# Append to ~/honcho-memory/docker-compose.yml (indentation must match the other
+# services — two spaces under `services:`), then:
+#   docker compose up -d mcp
+#   curl -s -o /dev/null -w '%{http_code}\n' \
+#     http://127.0.0.1:8790/.well-known/oauth-protected-resource    # expect 200
+#
+# Requires the two local-only files, which upstream does not ship:
+#   mcp/Dockerfile.local      (from configs/mcp/Dockerfile.local)
+#   mcp/wrangler.local.toml   (from configs/mcp/wrangler.local.toml)
+#
+# Note: a bare `docker compose up -d` will now also create this service. Name
+# services explicitly when you do not want that.
+#
+# The image is built from `npm install` with no lockfile and runs as root; pin
+# versions in the Dockerfile for anything you intend to run long-term.
+
+  mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile.local
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8790:8790"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8790/.well-known/oauth-protected-resource').then(r=>{if(!r.ok)process.exit(1)})",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    # --ip 0.0.0.0 is the worker binding *inside* the container; the host-side
+    # publish above is what decides exposure, and it is loopback-only.
+    command:
+      [
+        "npx",
+        "wrangler",
+        "dev",
+        "--config",
+        "wrangler.local.toml",
+        "--ip",
+        "0.0.0.0",
+        "--port",
+        "8790",
+      ]
+    restart: unless-stopped

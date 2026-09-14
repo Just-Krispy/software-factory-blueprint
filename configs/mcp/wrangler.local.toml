@@ -1,0 +1,17 @@
+# Wrangler config for running the Honcho MCP worker locally, alongside the
+# Honcho API container. Copy to ~/honcho-memory/mcp/wrangler.local.toml.
+#
+# HONCHO_API_URL points at the compose service name, not localhost: inside the
+# compose network the API is reachable as http://api:8000. It is deliberately not
+# a per-request header — letting callers redirect the worker at an arbitrary URL
+# would be a latency and security regression.
+name = "honcho-mcp-local"
+main = "src/index.ts"
+compatibility_date = "2024-12-09"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+HONCHO_API_URL = "http://api:8000"
+
+[observability.logs]
+enabled = false

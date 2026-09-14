@@ -1,0 +1,82 @@
+# SSSF roster skeleton — the shape, not a working roster.
+#
+# Copy to adws/adw_sssf_config/sssf.config.yaml and fill in with model ids your
+# provider actually serves. Nothing validates these at startup: a bad id fails
+# when that agent runs, minutes into a workflow, so check each one first:
+#
+#   curl -s https://openrouter.ai/api/v1/models | jq -r '.data[].id' | grep -x '<id>'
+#
+# The `provider/` half selects which API key is required, so keep every agent on
+# one provider until you are comfortable running several.
+
+defaults:
+  coding_agent: pi
+  model: openrouter/<vendor>/<model>
+  thinking: medium
+  tools:
+    - read
+    - bash
+    - edit
+    - write
+    - grep
+    - find
+    - ls
+  # The engine, the roster, and the ADW scripts must not be editable by agents.
+  # Enforced by adw_modules/permissions.py.
+  protected_files:
+    - adws/adw_modules/
+    - adws/adw_sssf_config/
+    - adws/adw_*.py
+  data_dir: adws/adw_data
+
+observability:
+  db: adws/adw_data/sssf.db
+  poll_ms: 500
+
+agents:
+  - name: planner
+    model: openrouter/<vendor>/<reasoning-model>
+    thinking: high
+    color: "#a78bfa"
+    purpose: Turn a request into a plan the builder can implement without asking questions.
+    prompt_engineering:
+      system: adws/adw_data/prompt_engineering/planner/system.md
+      user: adws/adw_data/prompt_engineering/planner/user.md
+    writes:
+      - specs/
+
+  - name: builder
+    model: openrouter/<vendor>/<coding-model>
+    thinking: medium
+    purpose: Implement the plan exactly; report every changed file in the envelope.
+    prompt_engineering:
+      system: adws/adw_data/prompt_engineering/builder/system.md
+      user: adws/adw_data/prompt_engineering/builder/user.md
+    tools:
+      - read
+      - grep
+      - find
+      - ls
+      - bash
+      - edit
+      - write
+
+  - name: scout
+    model: openrouter/<vendor>/<fast-model>
+    thinking: low
+    purpose: Find and report where things live; change nothing.
+    writes: []
+
+  - name: reviewer
+    model: openrouter/<vendor>/<reasoning-model>
+    thinking: high
+    purpose: Confirm that what was built is what was asked for; change nothing.
+    writes: []
+
+  - name: documenter
+    model: openrouter/<vendor>/<fast-model>
+    thinking: low
+    purpose: Write up the change that was just made, from the diff; document only.
+    writes:
+      - docs/
+      - "*.md"

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the shared-memory sync every 10 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+# Spread the tick so several hosts do not push in lockstep.
+RandomizedDelaySec=60
+Persistent=true
+
+[Install]
+WantedBy=timers.target

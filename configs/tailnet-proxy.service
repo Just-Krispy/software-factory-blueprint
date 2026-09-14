@@ -1,0 +1,15 @@
+[Unit]
+Description=Honcho %NAME% on the tailnet (proxy to 127.0.0.1:%PORT%)
+After=network-online.target
+
+[Service]
+Type=simple
+# Binds the node's tailnet address only; the container keeps its loopback
+# binding, because Docker-published ports do not traverse the tailscale
+# interface. Resolved at start so the unit survives address changes.
+ExecStart=/bin/sh -c "exec /usr/bin/socat TCP-LISTEN:%PORT%,bind=$(/usr/bin/tailscale ip -4 | head -n1),fork,reuseaddr TCP:127.0.0.1:%PORT%"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

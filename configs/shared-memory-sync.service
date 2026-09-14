@@ -1,0 +1,9 @@
+[Unit]
+Description=Sync the git-backed shared-memory store
+Documentation=file:%h/.local/bin/shared-memory-sync.sh
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/shared-memory-sync.sh
+# A failed push must not wedge the timer; the next tick retries.
+SuccessExitStatus=0
