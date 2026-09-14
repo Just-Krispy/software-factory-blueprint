@@ -680,12 +680,19 @@ Optional header `X-Honcho-Workspace-ID: my-brain` selects the workspace
 CRUD + chat/card/context/representation, session CRUD + messages/context/clone,
 conclusions list/query/create/delete, `schedule_dream`, `get_queue_status`.
 
-### 6.4 Sharing one memory workspace with a collaborator
+### 6.4 Reaching the memory from your own other machines (optional)
 
-Two people, one memory: keep the API on loopback, join the machines on a private
-mesh (Tailscale or equivalent), **turn auth on**, and mint a scoped token per
-person. Auth is not optional once anything but this host can reach the API —
-that is the rule in §7, and the recipe below assumes it.
+**Skip this unless you need it.** A single-machine install needs none of it: the
+API stays on loopback and everything on that host reaches it directly. The
+blueprint assumes **each person or team runs their own isolated stack** — never
+point your agents at somebody else's instance, and never accept a token for one.
+What follows is for the case where *you* have a second machine (a laptop, a
+build box) that should read the same memory you host.
+
+Keep the API on loopback, join the machines on a private mesh (Tailscale or
+equivalent), **turn auth on**, and mint a scoped token per device. Auth is not
+optional once anything but this host can reach the API — that is the rule in §7,
+and the recipe below assumes it.
 
 ```bash
 # 1. On the host: enable auth, generate the signing secret
@@ -707,7 +714,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 
 ```bash
 # 2. Mint a token per consumer, scoped as tightly as the work allows
-uv run python scripts/generate_jwt.py --workspace factory-brain    # collaborator
+uv run python scripts/generate_jwt.py --workspace factory-brain    # second machine
 uv run python scripts/generate_jwt.py --workspace factory-brain    # your own host
 uv run python scripts/generate_jwt.py --admin                      # rare, debugging only
 ```
@@ -738,7 +745,7 @@ chmod 600 ~/.honcho-token
 ```
 
 ```bash
-# 4. Collaborator side: point every Honcho-aware tool at the shared host
+# 4. On the second machine: point every Honcho-aware tool at your host
 export HONCHO_URL="http://<mesh-hostname>:8000"
 export HONCHO_API_KEY="<scoped token>"
 curl -s -X POST -H 'Content-Type: application/json' \
@@ -765,12 +772,13 @@ Rules that keep this sane:
 
 - **One writer per fact.** Git-backed notes merge; derived Honcho memory can
   duplicate. Give each agent and human a distinct peer id.
-- **Never share the admin token.** One scoped token per person, each on their own
-  device, each revocable by rotating the secret.
+- **Never share the admin token**, and never hand a token to someone outside your
+  own fleet. One scoped token per device; all of them die the moment you rotate
+  `AUTH_JWT_SECRET` (§8).
 - **Auth off + anything but loopback = anyone who can route to the port can read,
   write, and delete the memory.** That is the whole reason step 1 exists.
 
-#### Reaching the memory from another machine (verified recipe)
+#### Verified recipe (loopback containers + a mesh forwarder)
 
 Two gotchas, both hit in practice:
 
@@ -810,12 +818,13 @@ curl -s -X POST -H 'Content-Type: application/json' \
   http://<node>.<tailnet>.ts.net:8000/v3/workspaces/factory-brain/sessions/list
 ```
 
-`/v3/workspaces/list` is admin-only — a collaborator's workspace-scoped token gets
+`/v3/workspaces/list` is admin-only — a workspace-scoped token gets
 `401` there, which is expected and not a misconfiguration.
 
-To let a specific collaborator in, share this node with their tailnet identity
-(admin console → Machines → Share), or add their device to the tailnet with an
-ACL that allows the port. They then use the MagicDNS name above.
+Add your own second device to the mesh, or share the node with your own tailnet
+identity. You do not need to expose this to anyone else's devices, and you should
+not: the token you mint is the only thing standing between a mesh peer and your
+memory.
 
 **Auth stays on** (§6.4). A tailnet limits *who can route* to the port; it does
 not authorise *what they may do* — every device on the tailnet, including a node
@@ -853,8 +862,8 @@ being fine the moment anything else can reach the service.
 - **Do not leave the model endpoint open.** If you serve models locally
   (MLX/vLLM/ollama), bind to loopback or set an API key — an unauthenticated
   OpenAI-compatible endpoint on your LAN lets anyone spend your GPU.
-- **Scoped tokens, not shared secrets.** Per-collaborator, per-workspace,
-  expiring. See §6.4.
+- **Scoped tokens, not shared secrets.** One per device, scoped to the workspace
+  it needs. See §6.4.
 
 ---
 

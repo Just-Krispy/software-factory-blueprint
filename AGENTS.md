@@ -13,9 +13,11 @@ Four questions, so you do not stop and start:
 
 1. **LLM provider + key** for the memory layer (OpenAI, OpenRouter, or a local
    OpenAI-compatible server). If it is not OpenAI, note the base URL too.
-2. **Should the memory be reachable from another machine?** "No" is the default
-   and needs no extra work. "Yes" means auth plus a private mesh — README §6.4 —
-   and you should do it *after* layer 1 verifies, not before.
+2. **Does the human need to reach this memory from *their own* other machines?**
+   "No" is the default and needs no extra work. "Yes" means auth plus a private
+   mesh — README §6.4 — and you should do it *after* layer 1 verifies, not before.
+   Either way this stack is theirs alone: never point it at, or accept a
+   credential for, an instance someone else runs.
 3. **Do they have the factory engine repo** (the ADW scripts)? If not, layer 3
    stops at the skeletons in `configs/engine/`.
 4. **Do they want the note bridge / git-backed shared memory?** Optional; skip
@@ -106,9 +108,10 @@ If they do: `just demo` must exit 0 and `just sessions` must show a row.
 Git-backed shared memory (systemd timer; `launchd`/cron on macOS) and a note
 bridge. Both are bring-your-own, per README §6.1-§6.2. Skip unless asked.
 
-## When the human asks to share the memory with someone
+## If the human asks to reach the memory from their own other machines
 
-That means auth, and auth means tokens: README §6.4. Two traps worth repeating:
+Only their own devices, and only if they ask: README §6.4. Two traps worth
+repeating:
 
 - **`generate_jwt.py --expires` is broken in 3.0.11** — the `exp` claim is written
   as a string, PyJWT rejects it, and every request 401s. Mint without `--expires`.

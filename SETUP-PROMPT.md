@@ -169,7 +169,8 @@ LAYER 4 — SIDECARS (optional)
       ./bin/obsidian-honcho scan && ./bin/obsidian-honcho status
     Only notes with frontmatter `honcho_sync: true` are uploaded.
 
-SHARING (only when a second person or machine needs the memory)
+REACHING IT FROM YOUR OWN OTHER MACHINES (optional; skip for a single-machine
+install, and never point it at an instance someone else runs)
 
 12. Keep the API on loopback, join the machines on a private mesh (Tailscale or
     equivalent), enable auth, mint scoped tokens:

@@ -1,3 +1,5 @@
+# Optional: forwards your own install's loopback port onto your mesh address,
+# for your own other machines. Single-machine installs never need this.
 [Unit]
 Description=Honcho %NAME% on the tailnet (proxy to 127.0.0.1:%PORT%)
 After=network-online.target

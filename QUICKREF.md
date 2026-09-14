@@ -137,7 +137,7 @@ curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
   "http://127.0.0.1:8000/v3/workspaces/<ws>/conclusions/list"     # 5. memory there?
 ```
 
-## Sharing the memory with another machine (tailnet)
+## Reaching your own install from another machine (optional, mesh)
 
 ```bash
 # on the factory host — keep containers on loopback, proxy to the tailnet IP
@@ -152,7 +152,8 @@ curl -s http://<node>.<tailnet>.ts.net:8000/health
 - Docker-published ports do **not** traverse the tailscale interface — bind
   containers to `127.0.0.1` and forward with the unit above (or `tailscale serve`
   if you have root).
-- Collaborator access = Tailscale node share / ACL (admin console).
+- Only for *your own* devices: skip entirely for a single-machine install.
+- Device access = node share / ACL in your mesh admin console (no third parties).
 - **Auth is required before any non-loopback exposure** (§6.4): `AUTH_USE_AUTH=true`
   + `AUTH_JWT_SECRET`, then a scoped token per consumer. The monitor reads
   `~/.honcho-token` (mode 600) on the factory host; clients send
