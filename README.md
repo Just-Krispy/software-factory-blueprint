@@ -466,6 +466,36 @@ illustrative — the `openrouter/` prefix is part of the id, and §5.3 explains 
 permission gate in `adw_modules/permissions.py` — agents cannot edit their own
 driver.
 
+#### Choosing a model per lane
+
+The roster is where quality and spend are decided. Three rules that survived a
+real cost review:
+
+- **Spend concentrates in the reasoning lanes.** Planner and reviewer emit far
+  fewer tokens than the implementer, at many times the price per token. Moving
+  those two to a current-generation model cut their rate by ~64% while raising
+  quality; cheapening the implementer buys almost nothing and costs you output.
+- **A strong coding model can be cheaper than a "cheap" general model.** Compare
+  the per-token price of what you *trust for code* against the flash tier you were
+  about to use: an older-but-good coder at $0.075/$0.250 beats a newer general
+  flash at $0.150/$0.600, and you get the model that writes code you keep.
+- **Read-only lanes (scout, documenter) are where you economise, if anywhere.**
+  They summarise and search; a previous-generation flash at half the price is
+  usually indistinguishable in the output.
+
+**Alias vs pinned id.** A `~family-latest` alias floats to the newest model in
+the family: you get upstream improvements with no config change, and you give up
+reproducibility — the same roster can behave differently next month. Pin a dated
+id (`...-0731`) when a run must be repeatable, or record the alias in your run
+notes. Both are defensible; being unaware of the choice is not.
+
+Whichever you pick, **verify it by running a lane and reading the trace**, not by
+reading the roster: a config edit that never reaches a run is invisible until it
+is expensive.
+
+**Delete lanes nothing calls.** An agent entry no workflow references looks like
+a capability and behaves like a trap — the next person assumes it runs.
+
 **Model ids are provider-specific, and nothing validates them at startup.** A
 roster entry naming an unknown id fails when that agent runs — minutes into a
 workflow. Check before the first real run:
