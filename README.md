@@ -233,8 +233,11 @@ declared service created at once.
 
 ### 3.4 Prove the memory loop works
 
-This acceptance test catches every wiring mistake. Run it with
-`DERIVER_FLUSH_ENABLED=true`, otherwise step 3 takes up to 30 minutes.
+**Runnable version:** `./scripts/verify-memory.sh` — seven steps, curl + jq only,
+exits 0 on success and names the offending setting on failure. The curl form below
+is the same test spelled out, for when you want to see each call.
+
+Run it with `DERIVER_FLUSH_ENABLED=true`, otherwise step 3 takes up to 30 minutes.
 
 ```bash
 WS=my-brain
@@ -938,7 +941,10 @@ config in one versioned file (this repo's `configs/`) and treat each host's
 Run in order on a fresh host. Every line must pass before the factory is trusted.
 
 ```bash
-# L1 — memory service
+# L1 — the whole memory loop in one command (preferred)
+./scripts/verify-memory.sh
+
+# L1 — memory service, by hand
 curl -s http://127.0.0.1:8000/health
 docker compose ps
 
