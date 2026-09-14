@@ -21,7 +21,7 @@ memory read path.
                  ┌─────────────────── factory host ───────────────────┐
   your laptop    │                                                     │
   ┌─────────┐    │  herdr server ── session "factory"                  │
-  │ monitor │SSH │    workspace: factory (5 panes)                │
+  │ monitor │SSH │    session: factory / workspace: factory       │
   │  (TUI)  │───►│      ├── pane: orchestrator  (pi agent)             │
   └─────────┘    │      ├── pane: reviewer      (pi agent)             │
                  │      ├── pane: team-coder    (pi agent)             │
@@ -312,26 +312,37 @@ Nothing creates that layout automatically. Build it once, scripted:
 ```bash
 herdr integration install pi                  # lifecycle state + session restore
 
-# session -> workspace -> tab -> pane -> one *named* agent per pane
+# Every command below is scoped to the session: --session factory. The socket is
+# per-session, so a bare `herdr pane list` looks for the *default* session and
+# fails if that session's server is not running.
 herdr --session factory workspace create --label factory --cwd ~/workspaces/agentic-dev
-herdr tab create --workspace <workspace_id> --cwd ~/workspaces/agentic-dev
-herdr pane split <pane_id> --direction right --cwd ~/workspaces/agentic-dev
+herdr --session factory tab create --workspace <workspace_id> --cwd ~/workspaces/agentic-dev
+herdr --session factory pane split <pane_id> --direction right --cwd ~/workspaces/agentic-dev
 
 # Start the agent under a stable name — this is what makes a pane "team-coder"
 # (and what herdr reports back as agent_name + managed_agent_kind).
-herdr agent start team-coder --kind pi --pane <pane_id>
+herdr --session factory agent start team-coder --kind pi --pane <pane_id>
 
-herdr pane list                               # ids, agent, status — or filter it:
-herdr pane list | jq -r '.result.panes[] | "\(.pane_id) \(.tab_id) \(.agent // "-")\"'
-herdr pane read <pane_id>                     # output without stealing focus
-herdr agent prompt team-coder "run the scout workflow"
+# Inspect: ids, tab, agent. Filtering the JSON is the quickest view.
+herdr --session factory pane list
+herdr --session factory pane list | jq -r '.result.panes[] | [.pane_id, .tab_id, (.agent // "-")] | @tsv'
+herdr --session factory pane read <pane_id>          # output, without stealing focus
+herdr --session factory agent prompt team-coder "run the scout workflow"
 ```
 
 Ids come from the JSON each command prints (`workspace_id`, `tab_id`,
 `pane_id`); omitting the optional `[PANE_ID]` targets the focused pane. The
-reference install runs **five tabs / five panes**, one named agent each
-(orchestrator, reviewer, team-coder, team-builder, team-scout) — treat that count
-as illustrative, not required.
+reference install runs **five tabs / five panes**, one agent each — observed as:
+
+```
+w2:p1  w2:t1  pi        w2:p9   w2:t9   pi
+w2:p4  w2:t4  pi        w2:pA   w2:tA   pi
+w2:pB  w2:tB  pi
+```
+
+Treat that count as illustrative, not required; the names (orchestrator,
+reviewer, team-coder, team-builder, team-scout) come from how each pane's agent
+was started.
 
 Verified against `herdr <object> <verb> --help` on 0.8.2: `workspace create`,
 `tab create`, `pane split --direction right|down`, `agent start --kind --pane`,
@@ -881,6 +892,7 @@ config in one versioned file (this repo's `configs/`) and treat each host's
 | `mcp` service has no build target | `Dockerfile.local` / `wrangler.local.toml` are local-only, absent upstream | vendor them from `configs/mcp/` |
 | A workflow fails minutes in, on one agent only | roster model id unavailable to the key's provider (nothing validates this at startup) | check each id against the provider model list before the run |
 | `docker compose up -d` starts services you did not ask for | bare `up` creates every declared service | name them: `docker compose up -d api deriver` |
+| `no herdr server is running at .../herdr.sock` although the factory is up | the socket is per-session; you omitted `--session <name>`, so the CLI looked for the default session | scope every command: `herdr --session factory pane list` |
 | Panes die when you close the terminal | the Herdr **server** was stopped, not the client | detach (`prefix+q`) or close the window; `herdr server stop` is the only real stop |
 | Agent state shows `? unknown` | no detector matched, or the integration is not installed | `herdr agent list`, `herdr agent explain <target> --json`, `herdr integration status` |
 
