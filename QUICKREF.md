@@ -110,7 +110,7 @@ print(len(h.peer("alice").conclusions.list()))
 | 8790 | Honcho MCP | `127.0.0.1` |
 | 5432 | Postgres (example compose) | `127.0.0.1` |
 | 6379 | Redis (example compose) | `127.0.0.1` |
-| 4601 / 4600 | trace visualizer (`just obs`) | localhost |
+| 4601 / 4600 | trace visualizer (`just obs`; needs the private app) | localhost |
 
 ## Health sequence (fastest triage)
 

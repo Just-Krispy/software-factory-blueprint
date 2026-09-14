@@ -310,22 +310,32 @@ herdr --session factory pane list      # panes carry agent, agent_session, statu
 Nothing creates that layout automatically. Build it once, scripted:
 
 ```bash
-herdr integration install pi                  # native session restore + state
+herdr integration install pi                  # lifecycle state + session restore
 
-# session -> workspace -> tab -> panes -> one agent per pane
+# session -> workspace -> tab -> pane -> one *named* agent per pane
 herdr --session factory workspace create --label factory --cwd ~/workspaces/agentic-dev
 herdr tab create --workspace <workspace_id> --cwd ~/workspaces/agentic-dev
 herdr pane split <pane_id> --direction right --cwd ~/workspaces/agentic-dev
-herdr pane run <pane_id> pi                   # the running process is the "agent"
 
-herdr pane list                               # agent, agent_session, status per pane
+# Start the agent under a stable name — this is what makes a pane "team-coder"
+# (and what herdr reports back as agent_name + managed_agent_kind).
+herdr agent start team-coder --kind pi --pane <pane_id>
+
+herdr pane list                               # ids, agent, status — or filter it:
+herdr pane list | jq -r '.result.panes[] | "\(.pane_id) \(.tab_id) \(.agent // "-")\"'
 herdr pane read <pane_id>                     # output without stealing focus
+herdr agent prompt team-coder "run the scout workflow"
 ```
 
+Ids come from the JSON each command prints (`workspace_id`, `tab_id`,
+`pane_id`); omitting the optional `[PANE_ID]` targets the focused pane. The
+reference install runs **five tabs / five panes**, one named agent each
+(orchestrator, reviewer, team-coder, team-builder, team-scout) — treat that count
+as illustrative, not required.
+
 Verified against `herdr <object> <verb> --help` on 0.8.2: `workspace create`,
-`tab create`, `pane split --direction right|down`, `pane run`, `pane send-text`,
-`pane read`. Agents are detected inside panes, so nothing registers them;
-`herdr integration install <agent>` adds lifecycle state and session restore.
+`tab create`, `pane split --direction right|down`, `agent start --kind --pane`,
+`agent prompt`, `pane read`.
 
 Each pane runs the `pi` coding agent under a stable identity (`team-coder`,
 `team-builder`, `reviewer`, `orchestrator`), and those identities are reused as
@@ -395,7 +405,7 @@ illustrative — the `openrouter/` prefix is part of the id, and §5.3 explains 
 | Agent | Model | Thinking | Writes | Purpose |
 |---|---|---|---|---|
 | planner | `openrouter/deepseek/deepseek-v4-pro` | high | `specs/` | turn a request into a plan the builder can execute without questions |
-| coder | `openrouter/~z-ai/glm-flash-latest` | medium | `src/`, `tests/` | primary implementer |
+| coder | `openrouter/z-ai/glm-flash-latest` | medium | `src/`, `tests/` | primary implementer |
 | builder | `openrouter/deepseek/deepseek-v4-flash-0731` | medium | repo (gated) | implement the plan exactly, report every changed file |
 | scout | `openrouter/deepseek/deepseek-v4-flash-0731` | low | — | find and report where things live; change nothing |
 | reviewer | `openrouter/deepseek/deepseek-v4-pro` | high | — | confirm what was built is what was asked; change nothing |
@@ -438,7 +448,8 @@ cd ~/workspaces/agentic-dev
 just --list
 just demo          # two cheap READ-ONLY runs: one prompt, one scout
 just sessions      # last 10 runs: id, status, request, tokens, cost
-just obs           # optional trace UI on http://localhost:4601 (needs bun)
+just obs           # trace UI on http://localhost:4601 — needs bun AND the
+                   # private visualizer app; skip it unless you have that repo
 ```
 
 `just demo` is the smoke test: config validated, session minted, agent ran,
