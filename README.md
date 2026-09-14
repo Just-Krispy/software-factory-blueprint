@@ -21,7 +21,7 @@ memory read path.
                  ┌─────────────────── factory host ───────────────────┐
   your laptop    │                                                     │
   ┌─────────┐    │  herdr server ── session "factory"                  │
-  │ monitor │SSH │    workspace: factory                          │
+  │ monitor │SSH │    workspace: factory (5 panes)                │
   │  (TUI)  │───►│      ├── pane: orchestrator  (pi agent)             │
   └─────────┘    │      ├── pane: reviewer      (pi agent)             │
                  │      ├── pane: team-coder    (pi agent)             │
@@ -58,7 +58,7 @@ before starting the next.
 | Herdr | <https://herdr.dev> | `0.8.2` |
 | SSSF / ADW engine | private repo; the starter is stamped by the project's own `install.py` | ADW scripts + `justfile` |
 | Agent CLI (`pi`) | installed via `mise` | `0.85.0` |
-| Monitor TUI | optional sidecar (single-file Textual app, read-only over SSH) | Textual 8.2.8 |
+| Monitor TUI | optional sidecar, **not shipped** here (single-file Textual app, read-only over SSH) | Textual 8.2.8 |
 
 ---
 
@@ -303,18 +303,29 @@ The factory shape:
 ```bash
 herdr --session factory workspace list
 # {"workspaces":[{"label":"factory","workspace_id":"w2","tab_count":5,"pane_count":5}]}
+# five panes: orchestrator, reviewer, team-coder, team-builder (+ one spare)
 herdr --session factory pane list      # panes carry agent, agent_session, status
 ```
 
-Nothing creates that layout automatically. Build it once, by hand:
+Nothing creates that layout automatically. Build it once, scripted:
 
 ```bash
-herdr --session factory                       # create/attach the session
-# inside: create a workspace per project, a tab per concern, a pane per agent
 herdr integration install pi                  # native session restore + state
-# then start the agent in each pane, e.g. `pi` in the pane named team-coder
-herdr --session factory workspace create --label factory   # if scripting it
+
+# session -> workspace -> tab -> panes -> one agent per pane
+herdr --session factory workspace create --label factory --cwd ~/workspaces/agentic-dev
+herdr tab create --workspace <workspace_id> --cwd ~/workspaces/agentic-dev
+herdr pane split <pane_id> --direction right --cwd ~/workspaces/agentic-dev
+herdr pane run <pane_id> pi                   # the running process is the "agent"
+
+herdr pane list                               # agent, agent_session, status per pane
+herdr pane read <pane_id>                     # output without stealing focus
 ```
+
+Verified against `herdr <object> <verb> --help` on 0.8.2: `workspace create`,
+`tab create`, `pane split --direction right|down`, `pane run`, `pane send-text`,
+`pane read`. Agents are detected inside panes, so nothing registers them;
+`herdr integration install <agent>` adds lifecycle state and session restore.
 
 Each pane runs the `pi` coding agent under a stable identity (`team-coder`,
 `team-builder`, `reviewer`, `orchestrator`), and those identities are reused as
@@ -462,7 +473,8 @@ just tail   <adw_id>   # newest events
 sqlite3 adws/adw_data/sssf.db "select status, count(*) from sessions group by status;"
 ```
 
-Optional monitor: a read-only Textual TUI that SSHes to the factory host and
+Optional monitor (**not shipped** in this repo; described so you can build one):
+a read-only Textual TUI that SSHes to the factory host and
 renders five panels — agents (`/proc` scan), pipeline queue (`sssf.db`), Honcho
 health + sessions/peers/conclusions, Herdr workspace/tab/pane state, and logs
 (byte-offset tail with rotation detection). It never writes to the remote and
@@ -507,16 +519,25 @@ Sync on every host with a systemd user timer (10 min) running
 `--rebase --autostash` → commit if dirty → push → log the revision.
 
 ```bash
-install -m 0755 configs/shared-memory-sync.sh ~/.local/bin/shared-memory-sync.sh
+mkdir -p ~/.local/bin ~/.config/systemd/user
+install -m 0755 configs/shared-memory-sync.sh      ~/.local/bin/shared-memory-sync.sh
+install -m 0644 configs/shared-memory-sync.service ~/.config/systemd/user/
+install -m 0644 configs/shared-memory-sync.timer   ~/.config/systemd/user/
+systemctl --user daemon-reload
 systemctl --user enable --now shared-memory-sync.timer
 systemctl --user list-timers | grep shared
 ```
 
-### 6.2 Obsidian → Honcho bridge
+(macOS: `launchd` or a cron entry running the same script — the timers are
+systemd-only.)
 
-Human-readable notes stay in Obsidian (source of truth for prose); explicitly
-opted-in notes are mirrored into Honcho for semantic recall. Opt in with
-frontmatter — the bridge never edits the vault:
+### 6.2 Notes → Honcho bridge
+
+Human-readable notes stay in the vault (source of truth for prose); explicitly
+opted-in notes are mirrored into Honcho for semantic recall. The bridge used here
+is private — bring your own, or skip this section. The contract to reproduce or
+look for in a tool: opt-in via frontmatter, never edit the vault, upload changed
+notes as new revisions carrying their source path and content hash:
 
 ```yaml
 ---
@@ -527,7 +548,7 @@ honcho_sync: true
 ```bash
 export OBSIDIAN_VAULT="/absolute/path/to/vault"
 export HONCHO_URL="http://127.0.0.1:8000"
-export FORGE_FLOW_HONCHO_PEERS="team-coder,team-builder"
+export HONCHO_PEERS="team-coder,team-builder"
 
 ./bin/obsidian-honcho scan      # local, read-only
 ./bin/obsidian-honcho sync      # uploads changed notes as revisions + sha256
@@ -643,8 +664,10 @@ a new `AUTH_JWT_SECRET`, which invalidates every token at once.
 
 ```bash
 # 3. Hand the token to consumers on the host
-install -m 600 /dev/null ~/.honcho-token
-cat > ~/.honcho-token <<< '<token>'          # the monitor reads this file
+# the monitor reads this file on the host; write it without putting the token
+# into your shell history or an agent transcript:
+read -rs TOKEN && printf '%s' "$TOKEN" > ~/.honcho-token && unset TOKEN
+chmod 600 ~/.honcho-token
 # agents launched with an env file:
 #   HONCHO_ENVIRONMENT_URL=http://127.0.0.1:<port>
 #   HONCHO_API_KEY=<token>
@@ -803,7 +826,8 @@ non-trivial before trusting a backup.
 **Upgrades.** Upstream publishes no pinned release artifact; the running version
 is whatever commit you cloned. Record it, `git pull`, read `CHANGELOG.md`, then
 `docker compose up -d --build` (the API entrypoint migrates). Keep a copy of
-`.env` (e.g. `.env.bak-<timestamp>`) so rollback is one `cp` away.
+`.env` as `.env.backup-<timestamp>` — the pattern upstream's `.gitignore`
+actually matches (§7) — so rollback is one `cp` away.
 
 **Health.**
 
@@ -874,13 +898,15 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
   -d '{}' http://127.0.0.1:8000/v3/workspaces/my-brain/sessions/list              # 401
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $HONCHO_API_KEY" -d '{}' \
-  http://127.0.0.1:8000/v3/workspaces/my-brain/sessions/list                      # 200"
+  http://127.0.0.1:8000/v3/workspaces/my-brain/sessions/list                      # 200
 
 # L2 — workspace manager
 herdr --version
 herdr --session factory workspace list
 
-# L3 — engine
+# L3 — engine (only if you have the ADW scripts; the skeletons in configs/engine/
+# define the shape but do not implement the runners, so `just demo` needs your
+# own adws/adw_prompt.py + adws/adw_scout.py)
 cd ~/workspaces/agentic-dev && just demo && just sessions
 sqlite3 adws/adw_data/sssf.db "select count(*) from sessions"
 

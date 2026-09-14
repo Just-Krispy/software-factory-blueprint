@@ -34,12 +34,15 @@ if [ -n "$(git status --porcelain)" ]; then
 
     # Guard: this store is written by agents, and `git add -A` will happily stage
     # a stray .env or an API key. Refuse the commit instead of publishing it.
-    SECRETS_RE='(^|/)\.env($|[._])|API_KEY=|SECRET=|PASSWORD=|TOKEN=|BEGIN [A-Z ]*PRIVATE KEY|sk-or-v1-[A-Za-z0-9]{10}|sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{20}'
-    if git diff --cached --name-only | grep -Eq "$SECRETS_RE" \
-       || git diff --cached | grep -Eq "$SECRETS_RE"; then
+    SECRETS_RE='(^|/)\.env($|[._])|API_KEY=|SECRET=|PASSWORD=|PASSWD=|TOKEN=|BEGIN [A-Z ]*PRIVATE KEY|sk-or-v1-[A-Za-z0-9]{10}|sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{20}|github_pat_[A-Za-z0-9_]{20}|AKIA[0-9A-Z]{12}|xox[baprs]-[A-Za-z0-9-]{10}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'
+    # `|| true`: under `set -e` a no-match grep (exit 1) would abort the script
+    # before it ever commits the clean tree.
+    HITS=$(git diff --cached | grep -En "$SECRETS_RE" | head -5 || true)
+    if [ -n "$HITS" ]; then
         echo "refusing to commit: staged content matches a secret pattern" >&2
-        echo "inspect with: git diff --cached" >&2
-        git reset -q
+        printf '%s\n' "$HITS" >&2
+        echo "nothing committed; the staging area is left as-is for inspection" >&2
+        echo "remove the offending content, then re-run this script" >&2
         exit 1
     fi
 

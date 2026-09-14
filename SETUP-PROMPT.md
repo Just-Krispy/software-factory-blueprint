@@ -133,10 +133,12 @@ LAYER 3 — SSSF / ADW (the engine)
 
 LAYER 4 — SIDECARS (optional)
 
-10. Git-backed shared memory (markdown, one fact per file, git is truth):
-      git clone <private shared-memory repo> ~/shared-memory
+10. Git-backed shared memory (markdown, one fact per file, git is truth).
+    Bring your own repo — any private git repo with facts/, decisions/,
+    context/, and agents/<name>/ will do; create it empty if you don't have one:
+      git init ~/shared-memory    # or: git clone <your repo> ~/shared-memory
       git clone <this blueprint repo> ~/software-factory-blueprint
-      mkdir -p ~/.local/bin
+      mkdir -p ~/.local/bin ~/.config/systemd/user
       install -m 0755 ~/software-factory-blueprint/configs/shared-memory-sync.sh ~/.local/bin/
       install -m 0644 ~/software-factory-blueprint/configs/shared-memory-sync.service ~/.config/systemd/user/
       install -m 0644 ~/software-factory-blueprint/configs/shared-memory-sync.timer ~/.config/systemd/user/

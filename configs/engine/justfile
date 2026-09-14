@@ -1,5 +1,9 @@
 # SSSF justfile skeleton — the minimum set of entry points, not the full engine.
 #
+# The recipes below expect the ADW runner scripts under adws/; they are not
+# shipped here. Until adws/adw_prompt.py and adws/adw_scout.py exist, `just demo`
+# (and the rest) fail — that is expected, not a bug in this file.
+#
 # Copy to the factory repo root. It assumes the ADW scripts exist under adws/
 # (see README §5.1 for what each one does). `.env` is loaded automatically, so
 # provider keys work without exporting them.
