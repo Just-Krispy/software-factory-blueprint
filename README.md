@@ -303,7 +303,7 @@ The factory shape:
 ```bash
 herdr --session factory workspace list
 # {"workspaces":[{"label":"factory","workspace_id":"w2","tab_count":5,"pane_count":5}]}
-# five panes: orchestrator, reviewer, team-coder, team-builder (+ one spare)
+# five panes, named: team-coder, team-reviewer, team-builder, team-orchestrator, team-scout
 herdr --session factory pane list      # panes carry agent, agent_session, status
 ```
 
@@ -340,9 +340,10 @@ w2:p4  w2:t4  pi        w2:pA   w2:tA   pi
 w2:pB  w2:tB  pi
 ```
 
-Treat that count as illustrative, not required; the names (orchestrator,
-reviewer, team-coder, team-builder, team-scout) come from how each pane's agent
-was started.
+Treat that count as illustrative, not required; the names come from how each
+pane's agent was started. The reference install's five are `team-coder`,
+`team-reviewer`, `team-builder`, `team-orchestrator`, `team-scout` (readable from
+`herdr --session factory pane list`, or from `agent_name` in the session JSON).
 
 Verified against `herdr <object> <verb> --help` on 0.8.2: `workspace create`,
 `tab create`, `pane split --direction right|down`, `agent start --kind --pane`,
