@@ -4,7 +4,7 @@
 # to get it. Exit 0 when everything required is present, 1 otherwise.
 #
 #   ./scripts/preflight.sh          # required + optional tooling
-#   ./scripts/preflight.sh --local  # also probe a running Honcho on :8000
+#   ./scripts/preflight.sh --local  # also require a running Honcho on :8000
 set -uo pipefail
 
 PROBE_LOCAL=0
@@ -40,12 +40,17 @@ req python3  python3  "--version" "install Python 3.11+ (Honcho runs 3.13 in-con
 
 # Docker daemon: the commonest first-run failure.
 if command -v docker >/dev/null 2>&1; then
-  if docker info >/dev/null 2>&1; then
+  docker_err=$(docker info 2>&1 >/dev/null | head -3)
+  if [ -z "$docker_err" ]; then
     printf '  ok      %-14s daemon reachable\n' "docker daemon"
     pass=$((pass+1))
+  elif printf '%s' "$docker_err" | grep -qi 'permission denied'; then
+    printf '  MISSING %-14s %s\n' "docker daemon" \
+      "your user cannot talk to the socket: sudo usermod -aG docker \$USER, then re-login"
+    fail=$((fail+1))
   else
-    printf '  MISSING %-14s daemon not running (%s)\n' "docker daemon" \
-      "start Docker Desktop, or: sudo systemctl enable --now docker"
+    printf '  MISSING %-14s %s\n' "docker daemon" \
+      "not running (start Docker Desktop, or: sudo systemctl enable --now docker)"
     fail=$((fail+1))
   fi
   if docker compose version >/dev/null 2>&1; then
@@ -84,6 +89,7 @@ if [ "$PROBE_LOCAL" = 1 ]; then
     printf '  next            ./scripts/verify-memory.sh\n'
   else
     printf '  MISSING %-14s nothing answering on :8000 (docker compose up -d)\n' "api /health"
+    fail=$((fail+1))
   fi
 fi
 

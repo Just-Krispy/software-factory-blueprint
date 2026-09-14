@@ -133,9 +133,11 @@ curl -fsSL https://herdr.dev/install.sh | sh && herdr --version
 ### 3.1 Get the server
 
 ```bash
-git clone https://github.com/plastic-labs/honcho.git ~/honcho-memory
+# Pin a tag: this blueprint is verified against v3.0.11, and upstream's newer tags
+# (v3.1.x) may change behaviour the notes below depend on.
+git clone --branch v3.0.11 --depth 1 https://github.com/plastic-labs/honcho.git ~/honcho-memory
 cd ~/honcho-memory
-git rev-parse --short HEAD      # record it — upstream ships no release pinning
+git describe --tags            # record what you actually took
 cp docker-compose.yml.example docker-compose.yml
 cp .env.template .env
 ```
@@ -885,9 +887,12 @@ ls -lh ./*.tgz ./*.sql.gz
 A tarball of an empty volume is silent, so check the sizes printed above are
 non-trivial before trusting a backup.
 
-**Upgrades.** Upstream publishes no pinned release artifact; the running version
-is whatever commit you cloned. Record it, `git pull`, read `CHANGELOG.md`, then
-`docker compose up -d --build` (the API entrypoint migrates). Keep a copy of
+**Upgrades.** Upstream tags releases (v3.0.11, v3.0.12, v3.1.x); the running
+version is whatever commit you cloned. Record it with `git describe --tags`, read
+`CHANGELOG.md` for the target, `git fetch --tags && git checkout <tag>`, then
+`docker compose up -d --build` (the API entrypoint migrates). Re-run
+`./scripts/verify-memory.sh` after every upgrade — it is the cheapest regression
+check you have. Keep a copy of
 `.env` as `.env.backup-<timestamp>` — the pattern upstream's `.gitignore`
 actually matches (§7) — so rollback is one `cp` away.
 
