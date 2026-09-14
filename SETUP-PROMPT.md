@@ -181,7 +181,7 @@ install, and never point it at an instance someone else runs)
       # Do NOT pass --expires: 3.0.11 writes a string exp claim that PyJWT
       # rejects (401 "Invalid JWT"). Mint without it.
       uv run python scripts/generate_jwt.py --workspace <ws>
-    Give each collaborator their own scoped token, never the admin token. They
+    Give each of your own devices its own scoped token, never the admin token. They
     set HONCHO_URL + HONCHO_API_KEY and use the same SDK/CLI/MCP configs.
 
 FINAL REPORT — give me:
