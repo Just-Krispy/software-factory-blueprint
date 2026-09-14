@@ -9,9 +9,15 @@
 #   VERIFY_VERBOSE=1 ./scripts/verify-memory.sh                          # print memory content
 #   VERIFY_TIMEOUT=300 VERIFY_CHAT_TIMEOUT=600 ./scripts/verify-memory.sh   # slow models
 #
-# Safety: it deletes ONLY what it created (the session it made, and a workspace it
-# made). A workspace-scoped token works: the target workspace is read from the
-# token's own scope. Nothing here needs the Python SDK.
+# Safety and side effects:
+#   - it deletes only resources the API confirmed it created (session create that
+#     answered 201, workspace create that answered 201). A session that already
+#     existed (200) is left in place, and so is a workspace it did not create.
+#   - it writes one test message as peer "verify-peer". If the target session
+#     already existed, that message and peer stay behind: point it at a scratch
+#     workspace (or let it use a throwaway one) rather than a live conversation.
+#   - a workspace-scoped token works: the target workspace is read from the
+#     token's own scope. Nothing here needs the Python SDK.
 set -uo pipefail
 
 BASE_URL="${HONCHO_URL:-http://127.0.0.1:8000}"
@@ -22,12 +28,12 @@ CHAT_TIMEOUT="${VERIFY_CHAT_TIMEOUT:-300}" # dialectic is a multi-iteration LLM 
 VERBOSE="${VERIFY_VERBOSE:-0}"
 
 WS="${VERIFY_WORKSPACE:-}"
-SESSION="${VERIFY_SESSION:-}"      # a caller-supplied session is never deleted
+SESSION="${VERIFY_SESSION:-}"      # a pre-existing session is never deleted (see below)
 PEER="${VERIFY_PEER:-verify-peer}"
 
-CREATED_WS=0
-SESSION_OWNED=0
-WS_SOURCE="named by VERIFY_WORKSPACE"
+CREATED_WS=0        # set only once the API confirms this run created the workspace
+SESSION_OWNED=0     # ... and this one, for the session (201, not 200)
+WS_SOURCE=
 
 die_usage() { printf 'invalid %s %s: use letters, digits, dot, dash, underscore\n' "$1" "$2" >&2; exit 2; }
 valid_id() { case "$1" in ''|*[!A-Za-z0-9._-]*) return 1;; esac; return 0; }
@@ -64,7 +70,8 @@ request() { # method url [json-body] [timeout]
 }
 
 cleanup() {
-  # Delete only what this run created; a caller-supplied session is left alone.
+  # Delete only what the API confirmed this run created (201). A reused session
+  # (200) or a workspace that already existed (200) is left in place.
   if [ "$SESSION_OWNED" = 1 ]; then
     request DELETE "$BASE_URL/v3/workspaces/$WS/sessions/$SESSION"
     case "$HTTP_STATUS" in
@@ -89,13 +96,24 @@ echo "  url:       $BASE_URL"
 echo "  auth:      $([ -n "$TOKEN" ] && echo 'bearer token' || echo 'none (AUTH_USE_AUTH=false)')"
 
 # Resolve the workspace: explicit > the token's own scope > a throwaway we create.
-if [ -z "$WS" ] && [ -n "$TOKEN" ]; then
+# WS_TO_CREATE means "this run intends to create it"; CREATED_WS is only set once
+# the API actually says so (201), so an abort before step 2 deletes nothing.
+WS_TO_CREATE=0
+if [ -n "$WS" ]; then
+  WS_SOURCE="named by VERIFY_WORKSPACE"
+elif [ -n "$TOKEN" ]; then
   claim=$(printf '%s' "$TOKEN" | python3 -c 'import base64,json,sys
 p=sys.stdin.read().strip().split(".")[1]; p+="="*(-len(p)%4)
 print(json.loads(base64.urlsafe_b64decode(p)).get("w") or "")' 2>/dev/null || true)
-  if [ -n "$claim" ]; then WS="$claim"; WS_SOURCE="from the token's scope"; fi
+  if [ -n "$claim" ]; then
+    WS="$claim"; WS_SOURCE="from the token's scope"
+  fi
 fi
-if [ -z "$WS" ]; then WS="verify-$$-$(date +%s)"; CREATED_WS=1; fi
+if [ -z "$WS" ]; then
+  WS="verify-$$-$(date +%s)"
+  WS_TO_CREATE=1
+  WS_SOURCE="throwaway, deleted on exit"
+fi
 [ -z "$SESSION" ] && SESSION="verify-session-$$-$RANDOM"
 
 valid_id "$WS" workspace || die_usage workspace "$WS"
@@ -114,11 +132,13 @@ case "$BODY" in
 esac
 
 step 2 "workspace"
-if [ "$CREATED_WS" = 1 ]; then
+if [ "$WS_TO_CREATE" = 1 ]; then
   request POST "$BASE_URL/v3/workspaces" "{\"id\":\"$WS\"}"
-  [ "$HTTP_STATUS" = 200 ] || [ "$HTTP_STATUS" = 201 ] \
-    || bad "workspace create failed — with auth on, pass HONCHO_API_KEY (or VERIFY_WORKSPACE=<existing>)" "$BODY"
-  ok "created $WS"
+  case "$HTTP_STATUS" in
+    201) CREATED_WS=1; ok "created $WS (it will be removed at the end)";;
+    200) CREATED_WS=0; ok "workspace $WS already existed (left untouched)";;
+    *)   bad "workspace create failed (HTTP $HTTP_STATUS) — with auth on, pass HONCHO_API_KEY (or VERIFY_WORKSPACE=<existing>)" "$BODY";;
+  esac
 else
   request POST "$BASE_URL/v3/workspaces/$WS/sessions/list" '{}'
   [ "$HTTP_STATUS" = 200 ] \
