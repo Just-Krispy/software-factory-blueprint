@@ -1,8 +1,13 @@
 # Setup prompt (hand this to a coding agent)
 
-Paste the block below into Claude Code, Codex, `omp`, or any agent with shell
-access on the target machine. It installs the four layers in order, verifying
-each. Sanitized: it never contains credentials, and it stops to ask for keys.
+**If you cloned this repo, prefer [`AGENTS.md`](AGENTS.md)** — same runbook, but
+the agent reads it from disk and you can keep it open in the same project. This
+file exists for the case where you only have the text: paste the block below into
+Claude Code, Codex, `omp`, or any agent with shell access on the target machine.
+
+Either way the agent should run `./scripts/preflight.sh` first and
+`./scripts/verify-memory.sh` to prove the result. Sanitized: the prompt never
+contains credentials, and it stops to ask for keys.
 
 ---
 
@@ -69,6 +74,9 @@ LAYER 1 — HONCHO (memory)
      docker compose ps                                  # api (healthy)
      curl -s http://127.0.0.1:8000/health               # {"status":"ok"}
      docker compose logs --tail=30 deriver              # "Running main loop"
+   If you cloned this repo, the whole loop is one command — run it and read its
+   failure text rather than guessing:
+     ./scripts/verify-memory.sh
 
 6. ACCEPTANCE — prove the memory loop (do not skip; this is the test that
    catches every wiring mistake). Use workspace name "verify-brain":

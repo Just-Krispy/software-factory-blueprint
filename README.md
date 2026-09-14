@@ -10,8 +10,42 @@ are the ones that actually cost time — including two that silently break the
 memory read path.
 
 - One-page cheat sheet: [`QUICKREF.md`](QUICKREF.md)
-- Hand the install to a coding agent: [`SETUP-PROMPT.md`](SETUP-PROMPT.md)
+- Hand the install to a coding agent: [`AGENTS.md`](AGENTS.md) (or paste
+  [`SETUP-PROMPT.md`](SETUP-PROMPT.md) into one)
 - Copy-ready configs: [`configs/`](configs/)
+
+## Start here
+
+Three ways in, easiest first.
+
+**1. Let your agent do it.** Clone the repo and point an agent at `AGENTS.md`:
+
+```bash
+git clone https://github.com/Just-Krispy/software-factory-blueprint.git
+cd software-factory-blueprint
+claude        # or: codex, omp, pi — then ask: "read AGENTS.md and set up the factory"
+```
+
+`AGENTS.md` carries the rules (loopback only, never print a key, ask before
+assuming), the order of work, and the acceptance criteria; `CLAUDE.md` points
+there automatically for Claude Code.
+
+**2. Drive it yourself.**
+
+```bash
+./scripts/preflight.sh          # is this machine ready? (read-only)
+# ... install layer by layer, §3 onward, or paste SETUP-PROMPT.md into an agent
+```
+
+**3. Prove it works.** One command, no SDK, no venv:
+
+```bash
+./scripts/verify-memory.sh      # health -> write -> derive -> conclusions -> ask
+```
+
+It exits 0 only when the whole memory loop works, and its failure messages name
+the setting that is wrong. Run it after every config change; it is the fastest way
+to tell "my stack is broken" from "my agent is confused".
 
 ---
 

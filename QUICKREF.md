@@ -2,6 +2,16 @@
 
 One page for the software factory. Full guide: [`README.md`](README.md).
 
+## Files that matter
+
+| File | Use it to |
+|---|---|
+| `AGENTS.md` | hand the install to a coding agent (rules + order + acceptance) |
+| `SETUP-PROMPT.md` | paste the same runbook into an agent |
+| `scripts/preflight.sh` | check tooling before starting (read-only) |
+| `scripts/verify-memory.sh` | prove the memory loop works, end to end |
+| `configs/` | env templates, engine skeletons, MCP + sync + tailnet units |
+
 ## Components and where they live
 
 Paths are examples — substitute your own, consistently.
@@ -57,6 +67,10 @@ Paths are examples — substitute your own, consistently.
 ## Factory commands
 
 ```bash
+# sanity
+./scripts/preflight.sh --local
+./scripts/verify-memory.sh                       # 7 steps, exit 0 = healthy
+
 # memory
 cd ~/honcho-memory
 docker compose up -d --build          # api deriver database redis (mcp optional)
