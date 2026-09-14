@@ -137,9 +137,12 @@ curl -s http://<node>.<tailnet>.ts.net:8000/health
   containers to `127.0.0.1` and forward with the unit above (or `tailscale serve`
   if you have root).
 - Collaborator access = Tailscale node share / ACL (admin console).
-- Auth on? every consumer needs a token; the monitor reads `~/.honcho-token`
-  (mode 600) on the factory host, and clients send `Authorization: Bearer …`.
-- Give each person their own workspace-scoped, expiring token — never the admin one.
+- **Auth is required before any non-loopback exposure** (§6.4): `AUTH_USE_AUTH=true`
+  + `AUTH_JWT_SECRET`, then a scoped token per consumer. The monitor reads
+  `~/.honcho-token` (mode 600) on the factory host; clients send
+  `Authorization: Bearer …`.
+- Mint with `generate_jwt.py --workspace <ws>` and **no `--expires`** — expiring
+  tokens are broken in 3.0.11. Never hand out the admin token.
 
 ## Gotchas in one line each
 
