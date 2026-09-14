@@ -7,6 +7,20 @@ deterministic Python workflow engine (SSSF/ADW), and optional memory sidecars.
 You are the agent. Your job is to install and verify it **on this machine**, with
 the human, and to leave behind something that works — not to touch their projects.
 
+## Ask the human once, up front
+
+Four questions, so you do not stop and start:
+
+1. **LLM provider + key** for the memory layer (OpenAI, OpenRouter, or a local
+   OpenAI-compatible server). If it is not OpenAI, note the base URL too.
+2. **Should the memory be reachable from another machine?** "No" is the default
+   and needs no extra work. "Yes" means auth plus a private mesh — README §6.4 —
+   and you should do it *after* layer 1 verifies, not before.
+3. **Do they have the factory engine repo** (the ADW scripts)? If not, layer 3
+   stops at the skeletons in `configs/engine/`.
+4. **Do they want the note bridge / git-backed shared memory?** Optional; skip
+   unless asked.
+
 ## Rules (do not violate these)
 
 1. **Loopback only.** Every service binds `127.0.0.1`. Never publish on
